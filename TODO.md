@@ -195,6 +195,7 @@ Multi-agent review of the attention-hooks work surfaced 15 findings; fixes:
 - [x] **Hook → daemon → simulator pipeline verified on Linux** — headless simulator + `--sim-only` daemon + hook script; `Bash` tool use maps to the "building" animation.
 - [x] **Daemon `--sim-only` has no third-party dependencies** — `ClawdBleClient` imported lazily.
 - [x] **Installer + docs** — `linux/install.sh`, `linux/hyprland-rules.conf`, `docs/linux.md`, README Linux section (incl. systemd journal logging).
+- [x] **README restructured Linux-first** — Linux install/build/daemon up front, macOS instructions moved to their own section; fixed the daemon entry point and added the missing LVGL fetch step. The `brew`/`.app` flow is untouched but no longer the default.
 - [ ] **Test on a real Omarchy/Hyprland session** — window opens under Wayland, systemd user services get `WAYLAND_DISPLAY`, float/pin rules behave (rule syntax was not checked against the Hyprland wiki).
 - [ ] **Why did the system-SDL2 build fail on Arch?** A first user run fell back to the static SDL2 build (which then failed on PipeWire, now fixed), but the original system-SDL2 error was not captured. Needs the output of `cmake -B build && cmake --build build` in `simulator/` on that machine.
 - [ ] **Verify the `sdl2` pacman package name/provider** on current Arch, and the Debian/Fedora package lines in `docs/linux.md`.

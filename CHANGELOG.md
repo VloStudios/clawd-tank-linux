@@ -6,6 +6,10 @@
 
 - **Linux support (Arch / Omarchy)** — `linux/install.sh` compiles the simulator, installs the Claude Code hooks, and runs the simulator window and daemon as systemd user services (`./linux/install.sh uninstall` reverses it). `linux/hyprland-rules.conf` has float/pin window rules for Hyprland, and `docs/linux.md` covers manual compile steps, services, journal logging (`journalctl --user -u clawd-tank-daemon`), and troubleshooting. The simulator build and the hook → daemon → simulator pipeline were verified in a headless Linux container; a live Wayland/Hyprland session is untested.
 
+### Changed
+
+- **README is now Linux-first** — Quick Start leads with the Linux installer, journal logging and a by-hand simulator/daemon build (including the previously missing LVGL fetch step and the correct `python -m clawd_tank_daemon.daemon` entry point). The upstream macOS download and menu bar app instructions moved into a separate "macOS" section.
+
 ### Fixed
 
 - **Static SDL2 fallback failed on Arch** — SDL 2.30.10's PipeWire audio backend does not compile against current PipeWire headers (`pw_node_enum_params` pointer-type error). The Linux installer and docs now build the bundled SDL2 with `-DSDL_AUDIO=OFF -DSDL_PIPEWIRE=OFF`; the simulator only initialises SDL's video subsystem.
