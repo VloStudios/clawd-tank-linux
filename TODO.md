@@ -189,6 +189,19 @@ Multi-agent review of the attention-hooks work surfaced 15 findings; fixes:
 - [x] **Heap diagnostics** — Free heap logged at boot. OOM logging in `ensure_frame_buf`.
 - [x] **PSRAM correction** — ESP32-C6FH8 has no PSRAM. Removed bogus settings from `sdkconfig.defaults`, corrected CLAUDE.md.
 
+## Linux Support (Arch / Omarchy) — Partial
+
+- [x] **Simulator compiles and links on Linux** — verified with `-DSTATIC_SDL2=ON` in a headless container; `<time.h>` include added for `tzset()`.
+- [x] **Hook → daemon → simulator pipeline verified on Linux** — headless simulator + `--sim-only` daemon + hook script; `Bash` tool use maps to the "building" animation.
+- [x] **Daemon `--sim-only` has no third-party dependencies** — `ClawdBleClient` imported lazily.
+- [x] **Installer + docs** — `linux/install.sh`, `linux/hyprland-rules.conf`, `docs/linux.md`, README Linux section (incl. systemd journal logging).
+- [ ] **Test on a real Omarchy/Hyprland session** — window opens under Wayland, systemd user services get `WAYLAND_DISPLAY`, float/pin rules behave (rule syntax was not checked against the Hyprland wiki).
+- [ ] **Why did the system-SDL2 build fail on Arch?** A first user run fell back to the static SDL2 build (which then failed on PipeWire, now fixed), but the original system-SDL2 error was not captured. Needs the output of `cmake -B build && cmake --build build` in `simulator/` on that machine.
+- [ ] **Verify the `sdl2` pacman package name/provider** on current Arch, and the Debian/Fedora package lines in `docs/linux.md`.
+- [ ] **BLE hardware on Linux** — daemon BLE transport via bleak/BlueZ is untested.
+- [ ] **Python test suite on Linux** — not run in the container used for this work (no PyPI access for pytest/bleak).
+- [ ] **Linux CI job** — add a workflow that builds the simulator and runs the headless smoke test.
+
 ## Future Considerations (Out of Scope)
 
 - Physical button interaction (dismiss notifications from the device)

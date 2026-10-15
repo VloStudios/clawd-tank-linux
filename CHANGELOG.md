@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Linux support (Arch / Omarchy)** — `linux/install.sh` compiles the simulator, installs the Claude Code hooks, and runs the simulator window and daemon as systemd user services (`./linux/install.sh uninstall` reverses it). `linux/hyprland-rules.conf` has float/pin window rules for Hyprland, and `docs/linux.md` covers manual compile steps, services, journal logging (`journalctl --user -u clawd-tank-daemon`), and troubleshooting. The simulator build and the hook → daemon → simulator pipeline were verified in a headless Linux container; a live Wayland/Hyprland session is untested.
+
+### Fixed
+
+- **Static SDL2 fallback failed on Arch** — SDL 2.30.10's PipeWire audio backend does not compile against current PipeWire headers (`pw_node_enum_params` pointer-type error). The Linux installer and docs now build the bundled SDL2 with `-DSDL_AUDIO=OFF -DSDL_PIPEWIRE=OFF`; the simulator only initialises SDL's video subsystem.
+- **Simulator-only daemon no longer requires `bleak`** — `ClawdBleClient` is now imported lazily, so `--sim-only` runs with only the Python standard library.
+- **Compiler warning on Linux** — `sim_ble_parse.c` now includes `<time.h>` for `tzset()`.
+
 ## [1.4.1] - 2026-04-16
 
 ### Fixed
