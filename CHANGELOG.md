@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- **Static SDL2 fallback failed on Arch** — SDL 2.30.10's PipeWire audio backend does not compile against current PipeWire headers (`pw_node_enum_params` pointer-type error). The Linux installer and docs now build the bundled SDL2 with `-DSDL_AUDIO=OFF -DSDL_PIPEWIRE=OFF`; the simulator only initialises SDL's video subsystem.
 - **Simulator-only daemon no longer requires `bleak`** — `ClawdBleClient` is now imported lazily, so `--sim-only` runs with only the Python standard library.
 - **Compiler warning on Linux** — `sim_ble_parse.c` now includes `<time.h>` for `tzset()`.
 

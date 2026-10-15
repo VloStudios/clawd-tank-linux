@@ -77,10 +77,10 @@ cmake -B build
 cmake --build build -j"$(nproc)"
 ```
 
-If CMake cannot find SDL2, build with the bundled static copy instead (downloads SDL2 from GitHub):
+If the system build fails (for example CMake cannot find SDL2), build with the bundled static copy instead. It downloads SDL2 from GitHub. Keep the two `-DSDL_*=OFF` flags: the simulator only needs SDL's video subsystem, and SDL 2.30's PipeWire audio backend does not compile against current PipeWire headers on Arch.
 
 ```bash
-cmake -B build-static -DSTATIC_SDL2=ON
+cmake -B build-static -DSTATIC_SDL2=ON -DSDL_AUDIO=OFF -DSDL_PIPEWIRE=OFF
 cmake --build build-static -j"$(nproc)"
 ```
 
@@ -196,7 +196,8 @@ systemctl --user enable --now clawd-tank-daemon.service clawd-tank-sim.service
 | Crab never reacts | Restart Claude Code, then `journalctl --user -u clawd-tank-daemon -f` while you send a prompt. Confirm `~/.claude/settings.json` has a `clawd-tank-notify` hook. |
 | `Another clawd-tank daemon is already running` | Only one daemon can run (`~/.clawd-tank/daemon.lock`). Stop the old one: `systemctl --user stop clawd-tank-daemon`. |
 | `Port 19872 in use` | Another simulator is running. `clawd-tank-sim --listen 12345` plus `--sim-port 12345` on the daemon uses a different port. |
-| CMake: `Could not find SDL2` | Install the SDL2 development package, or use `-DSTATIC_SDL2=ON`. |
+| CMake: `Could not find SDL2` | Install the SDL2 development package, or use the static build with `-DSTATIC_SDL2=ON -DSDL_AUDIO=OFF -DSDL_PIPEWIRE=OFF`. |
+| `SDL_pipewire.c ... incompatible pointer type` while building static SDL2 | SDL 2.30's PipeWire audio backend vs newer PipeWire headers. Rebuild from a clean directory with `-DSDL_AUDIO=OFF -DSDL_PIPEWIRE=OFF` (`rm -rf simulator/build-static` first; CMake caches the old settings). |
 
 ## Using the real ESP32 board on Linux (untested)
 

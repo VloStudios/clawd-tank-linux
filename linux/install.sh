@@ -62,18 +62,25 @@ fetch_lvgl() {
   git -C "$LVGL_DIR" -c advice.detachedHead=false checkout -q --force FETCH_HEAD
 }
 
+build_static_sdl() {
+  # The simulator only initialises SDL's video subsystem, so build the bundled SDL2 without audio.
+  # SDL 2.30's PipeWire audio backend fails to compile against current PipeWire headers (Arch).
+  cmake -B build-static -DSTATIC_SDL2=ON -DSDL_AUDIO=OFF -DSDL_PIPEWIRE=OFF \
+    && cmake --build build-static -j"$(nproc)"
+}
+
 build_simulator() {
   say "Compiling the simulator"
   cd "$REPO_DIR/simulator"
   local out
   if [ "$STATIC_SDL" = 1 ]; then
-    cmake -B build-static -DSTATIC_SDL2=ON && cmake --build build-static -j"$(nproc)"
+    build_static_sdl
     out=build-static/clawd-tank-sim
   elif cmake -B build && cmake --build build -j"$(nproc)"; then
     out=build/clawd-tank-sim
   else
-    say "System SDL2 build failed; retrying with the bundled static SDL2"
-    cmake -B build-static -DSTATIC_SDL2=ON && cmake --build build-static -j"$(nproc)"
+    say "System SDL2 build failed (errors above); retrying with the bundled static SDL2"
+    build_static_sdl
     out=build-static/clawd-tank-sim
   fi
   install -Dm755 "$out" "$BIN_DIR/clawd-tank-sim"
