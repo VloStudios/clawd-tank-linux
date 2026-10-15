@@ -32,7 +32,7 @@ Claude Code hooks --> clawd-tank-notify --> daemon --> BLE --> ESP32-C6 display
 | Directory | What | Language |
 |-----------|------|----------|
 | `firmware/` | ESP-IDF firmware (LVGL UI, NimBLE GATT server, SPI display) | C |
-| `simulator/` | Native macOS simulator — runs the same firmware code without hardware | C |
+| `simulator/` | Native simulator (macOS, Linux) — runs the same firmware code without hardware | C |
 | `host/` | Background daemon, Claude Code hook handler, macOS menu bar app | Python |
 | `tools/` | Sprite pipeline (SVG to PNG to RLE-compressed RGB565), GIF recorder, BLE debugging | Python |
 
@@ -80,6 +80,29 @@ Interactive keys: `c` connect, `d` disconnect, `n` add notification, `1-8` dismi
 When `--listen` is active (default port 19872), the daemon can connect over TCP and drive the simulator with the same JSON protocol used over BLE, enabling the full Claude Code → daemon → display pipeline without hardware.
 
 See [simulator/README.md](simulator/README.md) for full CLI reference and JSON scenario support.
+
+### Linux (Arch / Omarchy)
+
+There is no menu bar app on Linux. The installer compiles the simulator, registers the Claude Code hooks, and runs the simulator window and the daemon as systemd user services:
+
+```bash
+git clone https://github.com/VloStudios/clawd-tank-linux.git
+cd clawd-tank-linux
+./linux/install.sh
+```
+
+Then restart any running Claude Code sessions. On Hyprland, copy the float/pin rules from [`linux/hyprland-rules.conf`](linux/hyprland-rules.conf) into your config, since the borderless window would otherwise be tiled. `./linux/install.sh uninstall` removes everything it added.
+
+**Logs (systemd journal).** On Linux the daemon and simulator log to the journal rather than to a file:
+
+```bash
+journalctl --user -u clawd-tank-daemon -f      # follow the daemon (hook events, transport state)
+journalctl --user -u clawd-tank-sim -f         # follow the simulator window process
+journalctl --user -u clawd-tank-daemon -u clawd-tank-sim --since "10 min ago"
+systemctl --user status clawd-tank-sim clawd-tank-daemon
+```
+
+Step-by-step compile instructions, manual service setup, and troubleshooting are in [docs/linux.md](docs/linux.md). The simulator compile and the hook → daemon → simulator pipeline were verified in a headless Linux container; a real Wayland/Hyprland session has not been tested yet.
 
 ### Firmware
 
@@ -137,7 +160,7 @@ python -m clawd_tank_daemon --sim
 python -m clawd_tank_daemon --sim-only
 ```
 
-The daemon auto-starts on the first hook event. Logs at `~/.clawd-tank/daemon.log`.
+The daemon auto-starts on the first hook event. Logs at `~/.clawd-tank/daemon.log` (under systemd on Linux, see `journalctl --user -u clawd-tank-daemon`).
 
 ## Features
 

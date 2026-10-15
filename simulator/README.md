@@ -1,6 +1,6 @@
 # Clawd Tank Simulator
 
-Native macOS simulator for the Clawd LVGL UI. Runs the same firmware rendering code (`scene.c`, `notification_ui.c`, `ui_manager.c`, `notification.c`) without hardware, using shim headers to replace ESP-IDF APIs.
+Native macOS and Linux simulator for the Clawd LVGL UI. Runs the same firmware rendering code (`scene.c`, `notification_ui.c`, `ui_manager.c`, `notification.c`) without hardware, using shim headers to replace ESP-IDF APIs.
 
 Supports two modes:
 - **Interactive** — SDL2 window with keyboard controls
@@ -10,9 +10,10 @@ Both modes support a **TCP listener** (`--listen`) that accepts the same JSON pr
 
 ## Prerequisites
 
-- macOS with Xcode command line tools
+- macOS with Xcode command line tools, **or** Linux with a C compiler and `make`
 - CMake 3.16+
-- SDL2 (`brew install sdl2`)
+- SDL2 (`brew install sdl2` on macOS; `sudo pacman -S sdl2` on Arch, or your distro's SDL2 development package). Alternatively build with `-DSTATIC_SDL2=ON` to download and link SDL2 statically.
+- LVGL checked out at `firmware/managed_components/lvgl__lvgl` (an ESP-IDF managed component, not in git). See [docs/linux.md](../docs/linux.md) for the pinned revision, or run `linux/install.sh`, which fetches it.
 
 ## Build
 
