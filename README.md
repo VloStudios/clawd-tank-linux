@@ -8,7 +8,7 @@ A tiny desktop aquarium for your Claude Code sessions.
 
 Clawd Tank is a notification display for Claude Code built on a [Waveshare ESP32-C6-LCD-1.47](https://s.click.aliexpress.com/e/_c4PGS55v) (320x172 ST7789). An animated pixel-art crab named Clawd lives on the screen, reacting to your coding session — alerting on new notifications, celebrating when you dismiss them, and sleeping when you're away.
 
-**No hardware? No problem.** The simulator runs natively on macOS and ships bundled inside the Menu Bar app. Download it from [Releases](https://github.com/marciogranzotto/clawd-tank/releases) — no build tools needed.
+**No hardware? No problem.** On Linux the simulator runs as a small borderless desktop window driven by your Claude Code sessions, and `./linux/install.sh` builds and sets everything up (see [Quick Start](#quick-start)). This repository is a Linux port of [marciogranzotto/clawd-tank](https://github.com/marciogranzotto/clawd-tank), which is macOS-first; the macOS instructions are kept [further down](#macos).
 
 <p align="center">
   <img src="assets/sim-recordings/clawd-multi-session.gif" alt="Multi-session display" width="480">
@@ -32,8 +32,9 @@ Claude Code hooks --> clawd-tank-notify --> daemon --> BLE --> ESP32-C6 display
 | Directory | What | Language |
 |-----------|------|----------|
 | `firmware/` | ESP-IDF firmware (LVGL UI, NimBLE GATT server, SPI display) | C |
-| `simulator/` | Native simulator (macOS, Linux) — runs the same firmware code without hardware | C |
-| `host/` | Background daemon, Claude Code hook handler, macOS menu bar app | Python |
+| `simulator/` | Native simulator (Linux, macOS) — runs the same firmware code without hardware | C |
+| `host/` | Background daemon, Claude Code hook handler, macOS menu bar app (macOS only) | Python |
+| `linux/` | Linux installer (`install.sh`) and Hyprland window rules | Bash |
 | `tools/` | Sprite pipeline (SVG to PNG to RLE-compressed RGB565), GIF recorder, BLE debugging | Python |
 
 ## Hardware
@@ -46,44 +47,9 @@ Claude Code hooks --> clawd-tank-notify --> daemon --> BLE --> ESP32-C6 display
 
 ## Quick Start
 
-### Download (no hardware needed)
-
-Grab the latest `.app` from [Releases](https://github.com/marciogranzotto/clawd-tank/releases), unzip, and drag to Applications. The app bundles the simulator — a borderless, resizable window shows Clawd on your desktop, driven by your Claude Code sessions.
-
-On first launch: click the crab icon in the menu bar → **Install Claude Code Hooks**. Restart any running Claude Code sessions.
-
-### Build from source — Simulator
-
-```bash
-brew install sdl2 cmake
-
-cd simulator
-cmake -B build && cmake --build build
-
-# Interactive mode — opens a borderless, resizable SDL2 window
-./build/clawd-tank-sim
-
-# Interactive + TCP listener — daemon can connect and drive it
-./build/clawd-tank-sim --listen
-
-# Self-contained binary (no Homebrew SDL2 needed)
-cmake -B build-static -DSTATIC_SDL2=ON && cmake --build build-static
-
-# Headless mode — outputs PNG screenshots
-./build/clawd-tank-sim --headless \
-  --events 'connect; wait 500; notify "clawd-tank" "Waiting for input"; wait 2000; disconnect' \
-  --screenshot-dir ./shots/ --screenshot-on-event
-```
-
-Interactive keys: `c` connect, `d` disconnect, `n` add notification, `1-8` dismiss, `x` clear, `s` screenshot, `z` sleep, `q` quit. The window is borderless and resizable — drag from center, resize from edges.
-
-When `--listen` is active (default port 19872), the daemon can connect over TCP and drive the simulator with the same JSON protocol used over BLE, enabling the full Claude Code → daemon → display pipeline without hardware.
-
-See [simulator/README.md](simulator/README.md) for full CLI reference and JSON scenario support.
-
 ### Linux (Arch / Omarchy)
 
-There is no menu bar app on Linux. The installer compiles the simulator, registers the Claude Code hooks, and runs the simulator window and the daemon as systemd user services:
+This is the recommended way to run Clawd Tank on Linux. There is no menu bar app here; the installer compiles the simulator, registers the Claude Code hooks, and runs the simulator window and the daemon as systemd user services:
 
 ```bash
 git clone https://github.com/VloStudios/clawd-tank-linux.git
@@ -104,6 +70,62 @@ systemctl --user status clawd-tank-sim clawd-tank-daemon
 
 Step-by-step compile instructions, manual service setup, and troubleshooting are in [docs/linux.md](docs/linux.md). The simulator compile and the hook → daemon → simulator pipeline were verified in a headless Linux container; a real Wayland/Hyprland session has not been tested yet.
 
+### Build the simulator by hand
+
+`./linux/install.sh` does all of this for you. To do it manually (full walkthrough in [docs/linux.md](docs/linux.md)):
+
+```bash
+# Arch / Omarchy build dependencies
+sudo pacman -S --needed base-devel cmake git python sdl2
+
+# LVGL is an ESP-IDF managed component, so it is not stored in git. Fetch the pinned revision once:
+mkdir -p firmware/managed_components/lvgl__lvgl
+git -C firmware/managed_components/lvgl__lvgl init -q
+git -C firmware/managed_components/lvgl__lvgl fetch --depth 1 https://github.com/lvgl/lvgl.git 85aa60d18b3d5e5588d7b247abf90198f07c8a63
+git -C firmware/managed_components/lvgl__lvgl checkout FETCH_HEAD
+
+cd simulator
+cmake -B build && cmake --build build -j"$(nproc)"
+
+# Interactive mode — opens a borderless, resizable SDL2 window
+./build/clawd-tank-sim
+
+# Interactive + TCP listener — daemon can connect and drive it
+./build/clawd-tank-sim --listen
+
+# Self-contained binary (no system SDL2 needed; audio is disabled because SDL 2.30's PipeWire backend does not build on Arch)
+cmake -B build-static -DSTATIC_SDL2=ON -DSDL_AUDIO=OFF -DSDL_PIPEWIRE=OFF && cmake --build build-static -j"$(nproc)"
+
+# Headless mode — outputs PNG screenshots
+./build/clawd-tank-sim --headless \
+  --events 'connect; wait 500; notify "clawd-tank" "Waiting for input"; wait 2000; disconnect' \
+  --screenshot-dir ./shots/ --screenshot-on-event
+```
+
+Interactive keys: `c` connect, `d` disconnect, `n` add notification, `1-8` dismiss, `x` clear, `s` screenshot, `z` sleep, `q` quit. The window is borderless and resizable — drag from center, resize from edges.
+
+When `--listen` is active (default port 19872), the daemon can connect over TCP and drive the simulator with the same JSON protocol used over BLE, enabling the full Claude Code → daemon → display pipeline without hardware.
+
+See [simulator/README.md](simulator/README.md) for full CLI reference and JSON scenario support.
+
+### Host Daemon (standalone)
+
+`./linux/install.sh` runs the daemon as a systemd user service. To run it by hand, start the simulator with a TCP listener, then the daemon. Simulator-only mode needs nothing beyond the Python standard library:
+
+```bash
+# Terminal 1 — simulator window with TCP listener
+./simulator/build/clawd-tank-sim --listen
+
+# Terminal 2 — daemon, simulator only (no BLE)
+cd host && PYTHONPATH=. python3 -m clawd_tank_daemon.daemon --sim-only
+
+# With the real ESP32 board as well (BLE via bleak/BlueZ; untested on Linux):
+#   sudo pacman -S python-bleak bluez
+cd host && PYTHONPATH=. python3 -m clawd_tank_daemon.daemon --sim
+```
+
+The hook script installed by `./linux/install.sh` (`~/.clawd-tank/clawd-tank-notify`) does not start the daemon itself, so keep it running, ideally via the systemd service. Under systemd, logs are in the journal (`journalctl --user -u clawd-tank-daemon -f`); run by hand, they go to your terminal.
+
 ### Firmware
 
 Requires [ESP-IDF 5.3.2](https://docs.espressif.com/projects/esp-idf/en/v5.3.2/esp32c6/get-started/index.html) (bundled in `bsp/esp-idf/`, activated via direnv).
@@ -113,6 +135,16 @@ cd firmware
 idf.py build
 idf.py -p /dev/ttyACM0 flash monitor
 ```
+
+## macOS
+
+The sections below are the upstream macOS instructions, kept for reference. They are not needed on Linux. The release download points at the upstream project's [Releases](https://github.com/marciogranzotto/clawd-tank/releases) page. To build the simulator from source on macOS, run `brew install sdl2 cmake` and then follow the same CMake steps as above.
+
+### Download the app (no hardware needed)
+
+Grab the latest `.app` from [Releases](https://github.com/marciogranzotto/clawd-tank/releases), unzip, and drag to Applications. The app bundles the simulator — a borderless, resizable window shows Clawd on your desktop, driven by your Claude Code sessions.
+
+On first launch: click the crab icon in the menu bar → **Install Claude Code Hooks**. Restart any running Claude Code sessions.
 
 ### macOS Menu Bar App
 
@@ -145,23 +177,6 @@ Logs are written to `~/Library/Logs/ClawdTank/clawd-tank.log`.
 
 Pre-built releases are available on the [Releases](https://github.com/marciogranzotto/clawd-tank/releases) page.
 
-### Host Daemon (standalone)
-
-The daemon can also run standalone without the menu bar app:
-
-```bash
-cd host
-pip install -r requirements.txt
-
-# Run daemon with simulator transport
-python -m clawd_tank_daemon --sim
-
-# Run daemon with simulator only (no BLE)
-python -m clawd_tank_daemon --sim-only
-```
-
-The daemon auto-starts on the first hook event. Logs at `~/.clawd-tank/daemon.log` (under systemd on Linux, see `journalctl --user -u clawd-tank-daemon`).
-
 ## Features
 
 - **Multi-session display** — up to 4 concurrent Claude Code sessions shown as individual animated Clawd sprites, each with their own working animation. New sessions walk in, exiting sessions burrow away
@@ -171,13 +186,14 @@ The daemon auto-starts on the first hook event. Logs at `~/.clawd-tank/daemon.lo
 - **Time display** — synced from host over BLE on connect (no WiFi/NTP needed)
 - **RGB LED flash** — onboard WS2812B cycles through colors on new notifications
 - **RLE sprite compression** — all sprite assets compressed ~14:1 (13MB raw → ~900KB)
-- **Bundled simulator** — macOS `.app` ships with the simulator binary, no hardware needed. Borderless resizable window with integer pixel scaling
+- **Simulator** — runs natively on Linux (and bundled in the macOS `.app`), no hardware needed. Borderless resizable window with integer pixel scaling
 - **Multi-transport** — daemon supports BLE (hardware) and TCP (simulator) transports simultaneously, independently enable/disable
 - **Simulator bridge** — full pipeline works without hardware via `--listen` flag and TCP. Window show/hide/pinned controlled over TCP
 - **Static SDL2 build** — `STATIC_SDL2=ON` produces a self-contained binary with zero external dependencies
 - **Auto-reconnect** — daemon replays active notifications and display state after reconnect on any transport
 - **Config over BLE/TCP** — brightness and session timeout adjustable via config characteristic or TCP
-- **macOS menu bar app** — transport submenus with colored status indicators, simulator window controls, brightness slider, session timeout, hook installer, version display, launch-at-login
+- **Linux support** — one-command installer, systemd user services, Hyprland window rules, journal logging
+- **macOS menu bar app** (macOS only) — transport submenus with colored status indicators, simulator window controls, brightness slider, session timeout, hook installer, version display, launch-at-login
 
 ## Clawd's Moods
 
@@ -230,6 +246,8 @@ cd firmware/test && make test
 # Python tests (host daemon + protocol)
 cd host && pip install -r requirements-dev.txt && pytest
 ```
+
+On Linux the Python test suite has not been run yet, and `rumps` in `requirements.txt` is macOS-only. See [TODO.md](TODO.md).
 
 ## Sprite Pipeline
 
